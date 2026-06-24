@@ -1,0 +1,90 @@
+<p align="center">
+  <a href="https://www.threads.com/@be_realdeveloper">
+    <img src="assets/banner.png" alt="B개발자 — 비개발자를 위한 바이브코딩 스킬" width="100%">
+  </a>
+</p>
+
+<h1 align="center">bdev-saju 🔮</h1>
+
+<p align="center">
+  생년월일시만 넣으면 <b>유료 사주 앱 같은 "평생사주 풀이" 18장</b>을 뽑고,<br>
+  풀이가 끝나면 <b>무엇이든 물어보는 상담 모드</b>로 넘어가는 Claude Code / Codex 스킬.
+</p>
+
+<p align="center">
+  <a href="https://www.threads.com/@be_realdeveloper"><img src="https://img.shields.io/badge/Built%20by-B%EA%B0%9C%EB%B0%9C%EC%9E%90-E46F4C?style=flat-square" alt="Built by B개발자"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue?style=flat-square" alt="MIT License"></a>
+  <img src="https://img.shields.io/badge/Claude%20Code-D97757?style=flat-square&logo=anthropic&logoColor=white" alt="Claude Code">
+</p>
+
+---
+
+> **문제:** 사주 앱은 "평생사주"에 결제를 걸어두고, 무료로는 맛만 보여준다. 그런데 막상 결제해도 누구한테나 들어맞는 두루뭉술한 글이 대부분이다.
+>
+> **bdev-saju**는 다르다. **진짜 만세력 엔진으로 절기 경계까지 정확하게 명식을 계산**한 뒤, 그 사람의 **실제 팔자·오행·십신·대운 데이터에 근거해서만** 18장짜리 풀이를 써준다. 별점·혈액형식 일반론이 아니라, "당신 사주엔 화(火)가 하나도 없고 관성이 3개라…" 처럼 명식에 묶인 해석이 나온다.
+
+## 뭘 해주나
+
+1. **명식 계산** — 생년월일시·성별(양/음력·윤달 지원)을 넣으면 동봉된 만세력 엔진이 사주팔자·일간·오행·십신·격국·용신·대운·12운성·신살을 계산. **LLM이 사주를 암산하지 않는다**(절기 경계에서 틀리므로 엔진이 계산).
+2. **평생사주 18장** — 유료 사주 앱(포스텔러·점신 류)의 표준 목차를 그대로, 길고 진하게.
+3. **상담 모드** — 18장이 끝나면 "올해 이직해도 될까요?", "그 사람이랑 맞아요?" 같은 질문을 같은 명식에 근거해 계속 답변.
+
+## 평생사주 목차 (18장)
+
+| | | |
+|---|---|---|
+| 1. 총평 | 2. 성격·기질 | 3. 오행 밸런스 |
+| 4. 십신 구조 | 5. 격국과 그릇 | 6. 용신(평생의 약) |
+| 7. 대운 인생그래프 | 8. 재물운 | 9. 직업·적성 |
+| 10. 학업·시험 | 11. 애정·결혼 | 12. 건강운 |
+| 13. 대인관계·인복 | 14. 가족운 | 15. 신살 풀이 |
+| 16. 평생 길흉 캘린더 | 17. 개운법 | 18. 마무리 조언 |
+
+## 왜 "진짜" 같은가
+
+- **소수점 안 쓴다.** 흔한 가짜 티 — "재성이 0.9" 같은 내부 가중치 노출 — 대신 **개수**로 말한다: "재성 1개·약함", "화가 없는 신강 사주". 인기 풀이 방식 그대로.
+- **인기 감명 순서**를 따른다: 일간 → 신강/신약(저울) → 오행(없는 오행) → 십신(없는 십신) → 격국·용신 → 신살 → 대운.
+- **궁위론** — 같은 십신도 어느 기둥(연=조상·초년 / 월=부모·사회 / 일=나·배우자 / 시=자식·말년)에 있느냐로 영역을 나눠 해석.
+- **근거 사전 동봉** — `references/interpretation.md`에 일간 10종·십신 10종·12운성·신살·오행↔건강 매핑이 들어 있어 풀이가 일관된다.
+
+## 안전 원칙
+
+점집이 아니라 **참고용 분석 도구**다.
+
+- 🚫 수명·중병·이혼·파산 **단정 금지** (건강은 "약한 장부·관리 포인트"까지만).
+- 🚫 부적·굿·비싼 개명 **강매 금지** — 개운법은 색·방위·생활습관 같은 무해한 처방까지만.
+- 🙅 타인 사주를 본인 동의 없이 단정하지 않음. 궁합은 "경향·포인트"로.
+- 📌 모든 풀이 끝에 "참고이며 인생은 본인의 선택으로 바뀐다" 면책.
+
+## 설치
+
+```bash
+git clone https://github.com/be-realdeveloper/bdev-saju.git
+cd bdev-saju
+bash install.sh          # ~/.claude/skills/bdev-saju 로 복사
+```
+
+> 만세력 엔진은 **Node.js**만 있으면 됩니다. 의존 라이브러리([lunar-javascript](https://github.com/6tail/lunar-javascript), MIT)는 동봉되어 있어 **npm 설치가 필요 없습니다.**
+
+새 Claude Code / Codex 세션에서:
+
+```
+/bdev-saju
+```
+
+또는 그냥 **"사주 봐줘"**, **"내 평생사주 풀어줘"** 라고 말하면 됩니다. 생년월일·시간·성별(양/음력)을 물어본 뒤 풀이를 시작합니다.
+
+## 직접 써보기
+
+```
+사주 봐줘. 1995년 8월 15일 오후 2시 30분, 남자, 양력이야.
+```
+
+→ 명식표 + 18장 풀이가 쭉 나오고, 끝나면 "이제 뭐든 물어보세요"로 상담이 이어집니다.
+
+---
+
+<p align="center">
+  <sub>비개발자 전성시대 · made by <a href="https://www.threads.com/@be_realdeveloper">@be_realdeveloper</a></sub><br>
+  <sub>만세력 엔진은 <a href="https://github.com/6tail/lunar-javascript">lunar-javascript</a>(MIT)를 사용합니다.</sub>
+</p>

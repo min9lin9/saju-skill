@@ -1,0 +1,9 @@
+{
+  "name": "sajudoctor-tools",
+  "version": "1.0.0",
+  "private": true,
+  "description": "사주닥터 내부 도구 — 만세력 CLI (이연 도령 댓글봇용)",
+  "dependencies": {
+    "lunar-javascript": "1.7.6"
+  }
+}
