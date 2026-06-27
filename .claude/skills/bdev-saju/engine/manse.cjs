@@ -19,6 +19,10 @@
      음력 | --lunar                          음력 입력
      윤달 | --leap                           음력 윤달
      --json                                  JSON 출력
+     [경도 보정 — 기본 ON: 서울 −32분]
+     서울|부산|대구|… (도시명)               출생지 경도로 보정
+     경도127.0 | --lon=127.0                  경도 직접 지정
+     표준시 | --no-lon                        보정 끄기(시계 시각 그대로)
    ============================================================ */
 
 const path = require('path');
@@ -35,6 +39,23 @@ globalThis.Lunar = Lunar;
 require(path.join(__dirname, 'saju.js'));
 const SD = globalThis.SajuDoctor;
 
+const pad2 = (n) => String(n).padStart(2, '0');
+
+// ---------- 경도(진태양시) 보정 ----------
+// 한국 표준시(KST)는 동경 135°(일본 아카시) 기준인데, 한국 실제 위치는 약 127°라
+// 진태양시가 시계보다 늦다. 보정(분) = (실제경도 − 135) × 4분/도. 서울이면 약 −32분.
+// 절기·일진은 그대로, 오직 "시각"만 보정되어 시지/시간(천간) 경계가 정확해진다.
+const KST_MERIDIAN = 135;
+const CITY_LON = {
+  '서울': 126.98, '인천': 126.70, '수원': 127.03, '춘천': 127.73, '강릉': 128.90,
+  '대전': 127.39, '세종': 127.29, '청주': 127.49, '천안': 127.11, '전주': 127.15,
+  '광주': 126.85, '목포': 126.39, '여수': 127.66, '대구': 128.60, '안동': 128.73,
+  '포항': 129.36, '부산': 129.08, '울산': 129.31, '창원': 128.68, '제주': 126.53,
+  '평양': 125.75, '개성': 126.55
+};
+const DEFAULT_LON = CITY_LON['서울']; // 출생지 미상 시 서울 기준
+function lonOffsetMin(lon) { return Math.round((lon - KST_MERIDIAN) * 4); }
+
 // ---------- 입력 파싱 ----------
 function parse(argv) {
   const a = { gender: '', genderGiven: false, isLunar: false, isLeap: false, json: false, hour: null, minute: 0, hourGiven: false };
@@ -44,12 +65,17 @@ function parse(argv) {
   for (const raw of tokens) {
     const t = raw.trim();
     if (!t) continue;
+    let m;
     if (t === '--json') a.json = true;
     else if (t === '--lunar' || t === '음력' || t === '음') a.isLunar = true;
     else if (t === '--leap' || t === '윤달' || t === '윤') a.isLeap = true;
     else if (t === '--date' || t === '--time' || t === '--gender') continue; // 플래그 키는 무시(값만 사용)
     else if (/^(남|남자|m|M|male)$/.test(t)) { a.gender = '남'; a.genderGiven = true; }
     else if (/^(여|여자|f|F|female)$/.test(t)) { a.gender = '여'; a.genderGiven = true; }
+    // 경도 보정 옵션
+    else if (/^(--no-lon|--표준시|표준시|시계시각|무보정|보정없음)$/.test(t)) { a.lonOff = true; }
+    else if ((m = t.match(/^(?:--lon=?|경도)(\d{2,3}(?:\.\d+)?)$/))) { a.lon = +m[1]; a.lonLabel = `경도 ${m[1]}°E`; }
+    else if (CITY_LON[t] != null) { a.lon = CITY_LON[t]; a.lonLabel = `${t} ${CITY_LON[t]}°E`; }
     else rest.push(t);
   }
   for (const t of rest) {
@@ -78,12 +104,34 @@ if (!a.year || !a.month || !a.day) fail('생년월일(YYYY-MM-DD)이 필요해.'
 if (!a.gender) a.gender = '남'; // 미상 시 가정(아래 경고)
 if (a.hour == null) { a.hour = 12; a.minute = 0; } // 시 미상 → 정오 가정
 
+// ---------- 진태양시 보정 적용 ----------
+// 입력(양/음력)을 양력 시각으로 환산한 뒤 경도 오프셋(분)만큼 시프트해서 계산한다.
+// 보정은 "시각"에만 적용 — 절기/일진 계산은 보정된 양력 시각 기준으로 자연스럽게 따라간다.
+a.offsetMin = 0;
+let calcInput = { year: a.year, month: a.month, day: a.day, hour: a.hour, minute: a.minute, isLunar: a.isLunar };
+if (!a.lonOff) {
+  if (a.lon == null) { a.lon = DEFAULT_LON; a.lonLabel = `서울(기본) ${DEFAULT_LON}°E`; }
+  a.offsetMin = lonOffsetMin(a.lon);
+  // 1) 입력 → 양력 분해
+  let sy = a.year, sm = a.month, sd = a.day, sh = a.hour, smin = a.minute;
+  if (a.isLunar) {
+    const s = Lunar.fromYmdHms(a.year, a.month, a.day, a.hour, a.minute, 0).getSolar();
+    sy = s.getYear(); sm = s.getMonth(); sd = s.getDay(); sh = s.getHour(); smin = s.getMinute();
+  }
+  a.solarBefore = { year: sy, month: sm, day: sd, hour: sh, minute: smin };
+  // 2) 분 시프트(날짜 넘김 자동 처리)
+  const d = new Date(sy, sm - 1, sd, sh, smin + a.offsetMin, 0);
+  a.solarAfter = { year: d.getFullYear(), month: d.getMonth() + 1, day: d.getDate(), hour: d.getHours(), minute: d.getMinutes() };
+  a.dateShifted = (a.solarAfter.day !== sd || a.solarAfter.month !== sm || a.solarAfter.year !== sy);
+  calcInput = { ...a.solarAfter, isLunar: false }; // 보정된 양력으로 계산
+}
+
 let result;
 try {
   result = SD.analyze({
-    year: a.year, month: a.month, day: a.day,
-    hour: a.hour, minute: a.minute,
-    gender: a.gender, isLunar: a.isLunar, isLeap: a.isLeap
+    year: calcInput.year, month: calcInput.month, day: calcInput.day,
+    hour: calcInput.hour, minute: calcInput.minute,
+    gender: a.gender, isLunar: calcInput.isLunar, isLeap: a.isLeap
   });
   SD.enrichManse(result);
 } catch (e) {
@@ -166,7 +214,14 @@ if (!a.genderGiven) warns.push('성별 미입력 → 남자로 가정함 (의사
 
 const lines = [];
 lines.push('═══ 명식 계산 결과 (이 데이터에 근거해서만 답글 작성) ═══');
-lines.push(`[입력] ${a.isLunar ? '음력' : '양력'} ${a.year}-${String(a.month).padStart(2,'0')}-${String(a.day).padStart(2,'0')} ${a.hourGiven ? String(a.hour).padStart(2,'0')+':'+String(a.minute).padStart(2,'0') : '(시 미상)'} / ${a.gender}`);
+lines.push(`[입력] ${a.isLunar ? '음력' : '양력'} ${a.year}-${pad2(a.month)}-${pad2(a.day)} ${a.hourGiven ? pad2(a.hour)+':'+pad2(a.minute) : '(시 미상)'} / ${a.gender}`);
+if (a.lonOff) {
+  lines.push('[진태양시 보정] 끄짐(표준시 그대로) — 시지 경계가 시계 시각 기준');
+} else if (a.offsetMin !== 0) {
+  const b = a.solarBefore, c = a.solarAfter;
+  const shift = a.dateShifted ? `, ${c.year}-${pad2(c.month)}-${pad2(c.day)}로 날짜 넘어감` : '';
+  lines.push(`[진태양시 보정] ${a.lonLabel} → ${a.offsetMin}분 적용  (계산시각 ${pad2(b.hour)}:${pad2(b.minute)} → ${pad2(c.hour)}:${pad2(c.minute)}${shift})`);
+}
 lines.push('');
 lines.push(SD.toPromptContext(result));
 lines.push('');
